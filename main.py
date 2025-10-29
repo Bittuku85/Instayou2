@@ -67,7 +67,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Start Bot ---
 if __name__ == "__main__":
-    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN_HERE":
+    if not TOKEN or TOKEN == "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00":
         raise SystemExit("❌ TELEGRAM_TOKEN missing in environment variables.")
     print("🚀 Social Downloader Bot Started!")
     app = ApplicationBuilder().token(TOKEN).build()
