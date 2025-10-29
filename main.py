@@ -77,7 +77,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ============= RUN BOT =============
 async def main():
-    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN_HERE":
+    if not TOKEN or TOKEN == "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00":
         raise SystemExit("❌ TELEGRAM_TOKEN missing. Add it in Railway/Render/Replit variables.")
 
     app = ApplicationBuilder().token(TOKEN).build()
