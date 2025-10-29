@@ -5,7 +5,7 @@ import yt_dlp
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN") or "YOUR_BOT_TOKEN_HERE"
+TOKEN = os.environ.get("TELEGRAM_TOKEN") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
 
 # --- Instagram Downloader Function ---
 def get_instagram_video(url: str):
