@@ -1,88 +1,80 @@
-import os
-import re
-import requests
-import yt_dlp
-import asyncio
+import os, re, asyncio, requests, yt_dlp
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-# ============= BOT TOKEN =============
-TOKEN = os.environ.get("8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
+TOKEN = os.environ.get("TELEGRAM_TOKEN") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
 
-# ============= INSTAGRAM DOWNLOADER =============
-def get_instagram_video(url: str):
-    try:
-        api = f"https://snapinsta.app/action.php?url={url}&action=post"
-        res = requests.get(api, timeout=15)
-        if res.status_code != 200:
-            print("❌ Instagram API Error:", res.text[:100])
-            return None, None
-        media_links = re.findall(r'https://[^"]+\.mp4', res.text)
-        if not media_links:
-            return None, None
-        return media_links[0], "✅ Downloaded from Instagram!"
-    except Exception as e:
-        print("Instagram Error:", e)
-        return None, None
-
-# ============= YOUTUBE DOWNLOADER =============
-def get_youtube_video(url: str):
+# ---------- YouTube ----------
+def fetch_youtube(url):
     try:
         ydl_opts = {
-            "outtmpl": "video.mp4",
-            "format": "best[ext=mp4]",
+            "format": "best[ext=mp4][filesize<45M]",  # 45 MB cap (Telegram free limit)
+            "outtmpl": "ytvideo.mp4",
             "quiet": True,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-        return "video.mp4"
+        return "ytvideo.mp4"
     except Exception as e:
-        print("YouTube Error:", e)
+        print("YT-Error:", e)
         return None
 
-# ============= MAIN HANDLER =============
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.effective_message
-    text = message.text.strip() if message.text else ""
+# ---------- Instagram ----------
+def fetch_instagram(url):
+    try:
+        api = f"https://saveig.app/api/ajaxSearch?query={url}"
+        res = requests.get(api, timeout=10).json()
+        media = res["data"][0]["url"]
+        caption = res["data"][0].get("caption", "")
+        return media, caption
+    except Exception as e:
+        print("IG-Error:", e)
+        return None, None
 
-    if not text or not re.match(r"https?://", text):
-        await message.reply_text("📎 Send a valid Instagram or YouTube link!")
+# ---------- Handler ----------
+async def handle(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    msg = update.effective_message
+    text = (msg.text or "").strip()
+
+    if not re.match(r"https?://", text):
+        await msg.reply_text("📎 Send any *YouTube* or *Instagram* link.", parse_mode="Markdown")
         return
 
-    await message.reply_text("⏳ Processing... Please wait...")
+    await msg.reply_text("⏳ Processing your link…")
 
-    try:
-        if "instagram.com" in text:
-            media, caption = get_instagram_video(text)
-            if media:
-                await message.reply_video(video=media, caption=caption)
-            else:
-                await message.reply_text("❌ Couldn't fetch Instagram video (try a public post).")
+    # ---- YouTube ----
+    if "youtu" in text:
+        path = fetch_youtube(text)
+        if not path:
+            await msg.reply_text("❌ Failed to fetch or too large (>45 MB).")
             return
+        try:
+            await msg.reply_video(open(path, "rb"), caption="✅ Downloaded from YouTube!")
+        except Exception as e:
+            await msg.reply_text(f"⚠️ Can't send: {e}")
+        finally:
+            if os.path.exists(path):
+                os.remove(path)
+        return
 
-        elif "youtube.com" in text or "youtu.be" in text:
-            filepath = get_youtube_video(text)
-            if filepath:
-                await message.reply_video(video=open(filepath, "rb"), caption="✅ Downloaded from YouTube!")
-                os.remove(filepath)
-            else:
-                await message.reply_text("❌ YouTube download failed. Try a different link.")
+    # ---- Instagram ----
+    if "instagram.com" in text:
+        link, caption = fetch_instagram(text)
+        if not link:
+            await msg.reply_text("❌ Couldn't fetch Instagram video (public posts only).")
             return
+        await msg.reply_text(f"✅ Video link:\n{link}\n\n{caption or ''}")
+        return
 
-        else:
-            await message.reply_text("⚠️ Only Instagram or YouTube links are supported.")
+    await msg.reply_text("⚠️ Only Instagram & YouTube supported.")
 
-    except Exception as e:
-        await message.reply_text(f"❌ Error: {str(e)[:200]}")
-
-# ============= RUN BOT =============
+# ---------- Start ----------
 async def main():
-    if not TOKEN or TOKEN == "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00":
-        raise SystemExit("❌ TELEGRAM_TOKEN missing. Add it in Railway/Render/Replit variables.")
-
+    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN_HERE":
+        raise SystemExit("❌ TELEGRAM_TOKEN not set.")
     app = ApplicationBuilder().token(TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("🚀 Bot is running and waiting for messages...")
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    print("🚀 Bot running…")
     await app.initialize()
     await app.start()
     await asyncio.Event().wait()
