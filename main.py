@@ -1,14 +1,18 @@
+import os
+import re
+import requests
+import yt_dlp
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
-import yt_dlp, requests, re, os
 
-TOKEN = "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"  # 🔸 यहां अपना असली BotFather वाला token डालो
+# 🔹 अपना BotFather वाला Token नीचे डालो
+TOKEN = "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
 
-# ---------- YouTube ----------
+# ---------- YouTube Downloader ----------
 def download_youtube(url):
     try:
         ydl_opts = {
-            "format": "best[ext=mp4][filesize<45M]",
+            "format": "best[ext=mp4][filesize<45M]",  # 45 MB limit
             "outtmpl": "ytvideo.mp4",
             "quiet": True,
         }
@@ -19,47 +23,49 @@ def download_youtube(url):
         print("YT Error:", e)
         return None
 
-# ---------- Instagram ----------
+# ---------- Instagram Downloader (public reels only) ----------
 def get_instagram_link(url):
     try:
-        api = f"https://saveig.app/api/ajaxSearch?query={url}"
-        res = requests.get(api, timeout=10).json()
-        media = res["data"][0]["url"]
-        caption = res["data"][0].get("caption", "")
+        api = "https://igram.world/api/igdl"
+        res = requests.post(api, json={"url": url}, timeout=10).json()
+        media = res["result"][0]["url"]
+        caption = res["result"][0].get("caption", "")
         return media, caption
     except Exception as e:
         print("IG Error:", e)
         return None, None
 
-# ---------- Handler ----------
+# ---------- Handler Function ----------
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message.text.strip()
     chat_id = update.message.chat_id
 
     if not re.match(r"https?://", msg):
-        await update.message.reply_text("📎 Send me a *YouTube* or *Instagram* link.", parse_mode="Markdown")
+        await update.message.reply_text("📎 Send any *YouTube* or *Instagram* link.", parse_mode="Markdown")
         return
 
-    await update.message.reply_text("⏳ Processing...")
+    await update.message.reply_text("⏳ Processing your link...")
 
+    # ---- YouTube ----
     if "youtu" in msg:
         path = download_youtube(msg)
         if not path:
-            await update.message.reply_text("❌ Video too large or download failed.")
+            await update.message.reply_text("❌ Failed to download or video is too large.")
             return
         await context.bot.send_video(chat_id, open(path, "rb"), caption="✅ Downloaded from YouTube!")
         os.remove(path)
         return
 
+    # ---- Instagram ----
     if "instagram.com" in msg:
         link, caption = get_instagram_link(msg)
         if not link:
-            await update.message.reply_text("❌ Couldn't fetch Instagram video.")
+            await update.message.reply_text("❌ Couldn't fetch Instagram video (public reels only).")
             return
         await update.message.reply_text(f"🎬 Video link:\n{link}\n\n{caption or ''}")
         return
 
-    await update.message.reply_text("⚠️ Only YouTube & Instagram supported.")
+    await update.message.reply_text("⚠️ Only YouTube & Instagram supported for now.")
 
 # ---------- Start Bot ----------
 if __name__ == "__main__":
