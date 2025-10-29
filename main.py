@@ -2,12 +2,14 @@ import os
 import re
 import requests
 import yt_dlp
+import asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
+# --- Telegram Token ---
 TOKEN = os.environ.get("TELEGRAM_TOKEN") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
 
-# --- Instagram Downloader Function ---
+# --- Instagram Downloader ---
 def get_instagram_video(url: str):
     try:
         api_url = f"https://saveig.app/api/ajaxSearch?query={url}"
@@ -19,7 +21,7 @@ def get_instagram_video(url: str):
         print("Instagram Error:", e)
         return None, None
 
-# --- YouTube Downloader Function ---
+# --- YouTube Downloader ---
 def get_youtube_video(url: str):
     try:
         ydl_opts = {
@@ -56,8 +58,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif "youtube.com" in text or "youtu.be" in text:
         filepath = get_youtube_video(text)
         if filepath:
-            await message.reply_video(video=open(filepath, "rb"), caption="✅ Downloaded from YouTube!")
-            os.remove(filepath)
+            try:
+                await message.reply_video(video=open(filepath, "rb"), caption="✅ Downloaded from YouTube!")
+            finally:
+                os.remove(filepath)
         else:
             await message.reply_text("❌ Failed to download YouTube video.")
         return
@@ -65,11 +69,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await message.reply_text("⚠️ Only Instagram and YouTube links are supported.")
 
-# --- Start Bot ---
-if __name__ == "__main__":
-    if not TOKEN or TOKEN == "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00":
+# --- Start Bot (Async) ---
+async def main():
+    if not TOKEN or TOKEN == "YOUR_BOT_TOKEN_HERE":
         raise SystemExit("❌ TELEGRAM_TOKEN missing in environment variables.")
-    print("🚀 Social Downloader Bot Started!")
+
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.run_polling()
+    print("🚀 Bot is running... Waiting for messages...")
+    await app.initialize()
+    await app.start()
+    await asyncio.Event().wait()
+
+if __name__ == "__main__":
+    asyncio.run(main())
