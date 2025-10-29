@@ -7,7 +7,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
 # ============= BOT TOKEN =============
-TOKEN = os.environ.get("TELEGRAM_TOKEN") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
+TOKEN = os.environ.get("8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00") or "8236377322:AAHBz9VxoVnS6Pd7kD8RR40Rumd7Ok_vY00"
 
 # ============= INSTAGRAM DOWNLOADER =============
 def get_instagram_video(url: str):
